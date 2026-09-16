@@ -1,0 +1,41 @@
+name: Build APK Uji
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil repositori
+        uses: actions/checkout@v4
+
+      - name: Siapkan Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Siapkan Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Buat aplikasi Flutter uji
+        run: |
+          flutter create aplikasi_uji
+          cd aplikasi_uji
+          flutter pub get
+
+      - name: Bangun APK debug
+        working-directory: aplikasi_uji
+        run: flutter build apk --debug
+
+      - name: Simpan APK untuk diunduh
+        uses: actions/upload-artifact@v4
+        with:
+          name: APK-Uji-Absensi
+          path: aplikasi_uji/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
