@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1e40af">
+<title>ABSENSI KELAS</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+:root{--primary:#1e40af;--bg:#f1f5f9}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{font-family:Inter,sans-serif;background:var(--bg);-webkit-tap-highlight-color:transparent}
+button,input,select{font-family:inherit}
+button{touch-action:manipulation}
+#app-container{width:100%;max-width:800px;height:100vh;height:100dvh;margin:auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 0 20px rgba(0,0,0,.1)}
+.screen{display:none;position:absolute;inset:0;flex-direction:column;background:#f8fafc;z-index:10}
+.screen.active{display:flex;animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.scrollable{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scrollable::-webkit-scrollbar{width:5px}
+.scrollable::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+.brand-gradient{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%)}
+.nav-item{transition:.2s}
+.nav-item.active{color:#1e40af;font-weight:800}
+.hide-scroll::-webkit-scrollbar{display:none}
+#reader{width:100%;height:100%;max-width:100%;background:#000;overflow:hidden;position:relative}
+#reader video{width:100%!important;height:100%!important;object-fit:cover!important}
+#reader__dashboard_section_csr{display:none!important}
+#reader__status_span{color:#fff!important}
+.swal2-container{z-index:99999!important}
+.safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
+@keyframes scanline{0%{top:0}50%{top:100%}100%{top:0}}
+.scan-frame{width:220px;height:220px;position:relative}
+.scan-corner{position:absolute;width:32px;height:32px;border-color:#60a5fa}
+.scan-corner.tl{top:0;left:0;border-top:4px solid;border-left:4px solid;border-radius:8px 0 0 0}
+.scan-corner.tr{top:0;right:0;border-top:4px solid;border-right:4px solid;border-radius:0 8px 0 0}
+.scan-corner.bl{bottom:0;left:0;border-bottom:4px solid;border-left:4px solid;border-radius:0 0 0 8px}
+.scan-corner.br{bottom:0;right:0;border-bottom:4px solid;border-right:4px solid;border-radius:0 0 8px 0}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:#ef4444;box-shadow:0 0 10px #ef4444;top:50%;animation:scanline 2s linear infinite}
+</style>
+</head>
+
+<body>
+<div id="app-container">
+
+<!-- SPLASH -->
+<div id="screen-splash" class="screen active brand-gradient justify-center items-center text-white z-[100]">
+  <div class="text-center px-6">
+    <div class="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+      <i class="fa-solid fa-qrcode text-5xl text-blue-800"></i>
+    </div>
+    <h1 class="text-4xl font-black tracking-tight mb-2">ABSENSI KELAS</h1>
+    <p class="text-blue-100 font-medium text-sm mb-10">Sistem Absensi Digital Sekolah</p>
+    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-white/80"></i>
+    <p class="text-[10px] font-bold tracking-widest uppercase mt-3 opacity-80">Memuat Sistem...</p>
+  </div>
+  <div class="absolute bottom-8 w-full text-center opacity-80">
+    <p class="text-[10px] uppercase tracking-widest font-bold">Diciptakan oleh</p>
+    <p class="text-sm font-semibold mt-1">Dhona Chindy Ferdiana, M.Pd, Gr</p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen bg-white z-50">
+  <div class="flex-1 flex flex-col justify-center items-center p-6 md:p-12 relative scrollable">
+    <div class="text-center mb-8 w-full max-w-sm">
+      <div class="inline-block p-4 rounded-full bg-blue-50 text-blue-800 mb-4 border border-blue-100">
+        <i class="fa-solid fa-user-lock text-3xl"></i>
+      </div>
+      <h1 class="text-3xl font-black text-gray-800">LOGIN APLIKASI</h1>
+      <p class="text-gray-500 text-xs mt-2 font-medium">Masukkan username dan password.</p>
+    </div>
+    <form id="form-login" class="space-y-4 w-full max-w-sm">
+      <div>
+        <label class="block text-xs font-black text-gray-700 mb-1 uppercase">Username</label>
+        <div class="relative">
+          <i class="fa-solid fa-user absolute left-4 top-3.5 text-gray-400"></i>
+          <input type="text" id="login-username" class="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold focus:bg-white focus:border-blue-500 outline-none" placeholder="Masukkan Username" required autocapitalize="none" autocomplete="username">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-black text-gray-700 mb-1 uppercase">Password</label>
+        <div class="relative">
+          <i class="fa-solid fa-lock absolute left-4 top-3.5 text-gray-400"></i>
+          <input type="password" id="login-password" class="w-full pl-11 pr-12 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold tracking-wider focus:bg-white focus:border-blue-500 outline-none" placeholder="••••••••" required autocomplete="current-password">
+          <button type="button" id="login-eye-btn" class="absolute right-4 top-3.5 text-gray-400"><i class="fa-solid fa-eye" id="login-eye"></i></button>
+        </div>
+      </div>
+      <button type="submit" class="w-full bg-blue-800 hover:bg-blue-900 active:scale-[.98] text-white font-black tracking-wide py-3.5 rounded-xl shadow-lg mt-6">
+        MASUK <i class="fa-solid fa-right-to-bracket ml-2"></i>
+      </button>
+    </form>
+    <div class="mt-8 p-3 bg-gray-50 rounded-lg text-[10px] text-center text-gray-500 font-medium max-w-sm w-full border">
+      <i class="fa-solid fa-circle-info text-blue-500"></i> Akun Guru hanya dikelola oleh Administrator.
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="screen-admin" class="screen z-40">
+<header class="brand-gradient text-white pt-8 pb-4 px-5 shadow-md flex justify-between items-center shrink-0">
+  <div><p class="text-[10px] uppercase tracking-wider font-bold text-blue-200">Administrator</p><h1 class="text-xl font-black">Manajemen Akun Guru</h1></div>
+  <button type="button" id="admin-logout" class="w-10 h-10 rounded-full bg-white/10 border border-white/20"><i class="fa-solid fa-power-off"></i></button>
+</header>
+<main class="flex-1 scrollable bg-gray-50 p-4 md:p-6 space-y-5">
+  <div class="grid grid-cols-2 gap-4">
+    <div class="bg-white p-4 rounded-2xl shadow-sm border flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-chalkboard-user"></i></div>
+      <div><p class="text-[10px] text-gray-500 font-black uppercase">Total Guru</p><h3 id="adm-stat-total" class="text-2xl font-black">0</h3></div>
+    </div>
+    <div class="bg-white p-4 rounded-2xl shadow-sm border flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center"><i class="fa-solid fa-user-check"></i></div>
+      <div><p class="text-[10px] text-gray-500 font-black uppercase">Guru Aktif</p><h3 id="adm-stat-aktif" class="text-2xl font-black">0</h3></div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl p-4 shadow-sm border bg-blue-50/30">
+    <h3 class="font-black text-xs uppercase mb-3"><i class="fa-solid fa-file-excel text-green-600 mr-2"></i>Import Data Guru</h3>
+    <div class="flex flex-col sm:flex-row gap-2">
+      <button type="button" id="btn-template-guru" class="flex-1 text-[11px] bg-white border font-bold px-3 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-download mr-1.5 text-blue-600"></i>Template Excel</button>
+      <button type="button" id="btn-upload-guru" class="flex-1 text-[11px] bg-green-600 text-white font-bold px-3 py-2.5 rounded-xl shadow-md"><i class="fa-solid fa-upload mr-1.5"></i>Upload Excel</button>
+      <input type="file" id="file-import-guru" accept=".xlsx,.xls" class="hidden">
+    </div>
+  </div>
+
+  <div class="bg-white rounded-3xl shadow-sm border min-h-[300px]">
+    <div class="p-4 border-b bg-gray-50 flex justify-between items-center rounded-t-3xl">
+      <h3 class="font-black text-sm uppercase">Daftar Akun Guru</h3>
+      <button type="button" id="btn-add-guru" class="bg-blue-800 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"><i class="fa-solid fa-plus mr-1"></i>Manual</button>
+    </div>
+    <div class="p-3 border-b relative">
+      <i class="fa-solid fa-search absolute left-6 top-5 text-gray-400 text-sm"></i>
+      <input id="adm-search-guru" type="text" placeholder="Cari nama / username..." class="w-full pl-9 pr-3 py-2.5 rounded-xl border text-xs bg-gray-50 outline-none">
+    </div>
+    <div class="p-0 overflow-y-auto max-h-[50vh]"><ul id="adm-list-guru" class="divide-y"></ul></div>
+  </div>
+</main>
+</div>
+
+<!-- GURU -->
+<div id="screen-guru" class="screen z-40">
+<header class="bg-white pt-8 pb-3 px-5 shadow-sm flex justify-between items-center shrink-0 border-b">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="w-10 h-10 rounded-full brand-gradient text-white flex items-center justify-center font-black shadow-md"><i class="fa-solid fa-chalkboard-user"></i></div>
+    <div class="min-w-0"><h1 id="guru-header-name" class="text-sm font-black text-gray-800 truncate">Nama Guru</h1><p class="text-[10px] text-gray-500 font-bold uppercase">Dashboard Guru</p></div>
+  </div>
+  <button type="button" id="guru-logout" class="text-red-500 bg-red-50 w-9 h-9 rounded-full border border-red-100"><i class="fa-solid fa-right-from-bracket"></i></button>
+</header>
+
+<main class="flex-1 scrollable bg-gray-50 pb-[85px] relative">
+<!-- BERANDA -->
+<section id="guru-view-beranda" class="guru-view p-4 md:p-6 space-y-5">
+  <div class="bg-gradient-to-br from-blue-800 to-blue-600 rounded-3xl p-6 shadow-lg text-white relative overflow-hidden">
+    <div class="absolute -right-4 -bottom-4 opacity-10"><i class="fa-solid fa-school text-9xl"></i></div>
+    <div class="relative z-10">
+      <p id="guru-date-today" class="text-xs text-blue-200 font-bold mb-1 tracking-widest uppercase">Tanggal</p>
+      <h2 class="text-2xl font-black mb-4">ABSENSI KELAS</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white/10 p-3 rounded-2xl border border-white/20"><p class="text-[10px] font-bold text-blue-200 uppercase">Total Kelas</p><h3 id="guru-stat-kelas" class="text-2xl font-black">0</h3></div>
+        <div class="bg-white/10 p-3 rounded-2xl border border-white/20"><p class="text-[10px] font-bold text-blue-200 uppercase">Total Siswa</p><h3 id="guru-stat-siswa" class="text-2xl font-black">0</h3></div>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white rounded-3xl p-5 shadow-sm border">
+    <h3 class="font-black text-xs uppercase mb-3"><i class="fa-solid fa-bolt text-yellow-500 mr-2"></i>Jalan Pintas</h3>
+    <div class="grid grid-cols-2 gap-3">
+      <button type="button" data-goto="siswa" class="quick-btn bg-blue-50 text-blue-700 p-4 rounded-2xl font-bold text-xs border flex flex-col items-center justify-center"><i class="fa-solid fa-users text-2xl mb-2"></i>Kelola Data Siswa</button>
+      <button type="button" data-goto="rekap" class="quick-btn bg-green-50 text-green-700 p-4 rounded-2xl font-bold text-xs border flex flex-col items-center justify-center"><i class="fa-solid fa-file-excel text-2xl mb-2"></i>Laporan & Rekap</button>
+    </div>
+  </div>
+</section>
+
+<!-- SISWA -->
+<section id="guru-view-siswa" class="guru-view hidden p-4 md:p-6 space-y-4">
+  <div><h2 class="text-xl font-black text-gray-800">Manajemen Siswa & Kelas</h2><p class="text-[10px] text-gray-500 font-bold uppercase mt-1">Import Excel otomatis membuat kelas & QR</p></div>
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-200 bg-blue-50/50">
+    <h3 class="font-black text-xs uppercase mb-3 text-center">Import Siswa Massal</h3>
+    <div class="flex flex-col sm:flex-row gap-2">
+      <button type="button" id="btn-template-siswa" class="flex-1 text-[11px] bg-white border font-bold px-3 py-3 rounded-xl"><i class="fa-solid fa-download mr-1.5 text-blue-600"></i>Template Siswa</button>
+      <button type="button" id="btn-upload-siswa" class="flex-1 text-[11px] bg-green-600 text-white font-bold px-3 py-3 rounded-xl"><i class="fa-solid fa-upload mr-1.5"></i>Upload Excel Siswa</button>
+      <input type="file" id="file-import-siswa" accept=".xlsx,.xls" class="hidden">
+    </div>
+  </div>
+  <div class="bg-white rounded-3xl shadow-sm border flex flex-col min-h-[400px]">
+    <div class="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between gap-3 rounded-t-3xl">
+      <select id="filter-siswa-kelas" class="w-full sm:w-1/2 p-2.5 bg-white border rounded-xl text-xs font-bold outline-none"><option value="">Semua Kelas</option></select>
+      <div class="flex gap-2 justify-end">
+        <button type="button" id="btn-print-massal" class="text-[10px] bg-gray-800 text-white font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-print mr-1"></i>Cetak QR Kelas</button>
+        <button type="button" id="btn-add-siswa" class="text-[10px] bg-blue-800 text-white font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-plus mr-1"></i>Manual</button>
+      </div>
+    </div>
+    <div class="p-3 border-b relative"><i class="fa-solid fa-search absolute left-6 top-5 text-gray-400 text-sm"></i><input id="search-siswa" type="text" placeholder="Cari nama atau NIS siswa..." class="w-full pl-9 pr-3 py-2.5 rounded-xl border text-xs bg-gray-50 outline-none"></div>
+    <ul id="guru-list-siswa" class="overflow-y-auto flex-1 divide-y min-h-[300px]"></ul>
+  </div>
+</section>
+
+<!-- SCAN -->
+<section id="guru-view-scan" class="guru-view hidden p-4 md:p-6">
+  <div id="scan-setup-panel" class="bg-white rounded-3xl shadow-sm border p-6 space-y-5">
+    <div class="text-center mb-6"><div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-3"><i class="fa-solid fa-camera"></i></div><h2 class="text-xl font-black">Sesi Absensi Baru</h2><p class="text-xs text-gray-500 mt-1">Pilih kelas yang akan diabsen.</p></div>
+    <div><label class="block text-xs font-black text-gray-700 mb-2 uppercase">Pilih Kelas</label><select id="scan-sel-kelas" class="w-full p-4 bg-gray-50 border rounded-2xl text-sm font-bold outline-none"><option value="">-- Menunggu Data --</option></select></div>
+    <div><label class="block text-xs font-black text-gray-700 mb-2 uppercase">Batas Jam Kehadiran (Telat)</label><input type="time" id="scan-time-late" class="w-full p-4 bg-gray-50 border rounded-2xl text-sm font-bold outline-none"></div>
+    <button type="button" id="btn-start-scan" class="w-full bg-blue-800 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition">BUKA KAMERA SCANNER <i class="fa-solid fa-qrcode ml-2"></i></button>
+  </div>
+
+  <div id="scan-active-panel" class="hidden flex-col min-h-[calc(100vh-155px)]">
+    <div class="bg-gray-900 text-white p-4 rounded-t-2xl flex justify-between items-center shrink-0">
+      <div><div class="flex items-center text-red-500 text-[10px] font-black uppercase tracking-widest mb-1"><div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse mr-1.5"></div>Live Record</div><h3 id="live-class-name" class="font-black text-lg">Kelas</h3><p id="live-time-info" class="text-[10px] text-gray-400 mt-0.5">Batas Hadir: --:--</p></div>
+      <button type="button" id="btn-close-session" class="bg-red-600 text-white px-4 py-2.5 rounded-xl font-black text-xs">TUTUP SESI</button>
+    </div>
+
+    <div class="bg-black relative flex flex-col justify-center items-center shrink-0 overflow-hidden h-[310px]">
+      <div id="reader" class="w-full h-full"></div>
+      <div id="scanner-permission-warning" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-center p-6 z-30 hidden">
+        <i class="fa-solid fa-camera-slash text-4xl text-gray-400 mb-3"></i><p class="text-white text-sm font-bold">Kamera Belum Diizinkan</p><p id="camera-error-text" class="text-gray-400 text-xs mt-1 mb-4">Izinkan kamera pada browser/perangkat.</p>
+        <button type="button" id="btn-retry-camera" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Coba Lagi</button>
+      </div>
+      <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10 pb-8">
+        <div class="scan-frame"><div class="scan-corner tl"></div><div class="scan-corner tr"></div><div class="scan-corner bl"></div><div class="scan-corner br"></div><div class="scan-line"></div></div>
+        <p class="text-white/70 font-bold text-xs mt-4">Arahkan kamera ke QR Siswa</p>
+      </div>
+      <button type="button" id="btn-switch-camera" class="absolute bottom-3 right-3 z-20 px-3 h-10 bg-black/60 text-white rounded-full border border-white/20 text-xs font-bold"><i class="fa-solid fa-camera-rotate mr-1"></i><span id="cam-facing-label">Kamera Belakang</span></button>
+    </div>
+
+    <div class="bg-white rounded-b-2xl shadow-lg flex flex-col overflow-hidden border">
+      <div class="grid grid-cols-4 gap-1 p-2 bg-gray-50 border-b">
+        <div class="bg-white p-2 rounded-lg text-center border"><div id="ls-total" class="font-black text-sm">0</div><div class="text-[8px] font-bold text-gray-500">TOTAL</div></div>
+        <div class="bg-green-50 p-2 rounded-lg text-center border border-green-200"><div id="ls-hadir" class="font-black text-sm text-green-700">0</div><div class="text-[8px] font-bold text-green-700">HADIR</div></div>
+        <div class="bg-orange-50 p-2 rounded-lg text-center border border-orange-200"><div id="ls-telat" class="font-black text-sm text-orange-700">0</div><div class="text-[8px] font-bold text-orange-700">TELAT</div></div>
+        <div class="bg-red-50 p-2 rounded-lg text-center border border-red-200"><div id="ls-belum" class="font-black text-sm text-red-700">0</div><div class="text-[8px] font-bold text-red-700">BELUM</div></div>
+      </div>
+      <div class="flex justify-between items-center px-4 py-2 border-b gap-2">
+        <div class="min-w-0"><h4 class="font-black text-[11px] uppercase">Daftar Kehadiran</h4><div class="flex gap-1 mt-1 overflow-x-auto hide-scroll">
+          <button type="button" class="live-flt text-[8px] px-2 py-1 rounded-full bg-gray-800 text-white font-bold" data-mode="ALL">SEMUA</button>
+          <button type="button" class="live-flt text-[8px] px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold" data-mode="HADIR">SUDAH ABSEN</button>
+          <button type="button" class="live-flt text-[8px] px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold" data-mode="BELUM">BELUM</button>
+        </div></div>
+        <button type="button" id="btn-manual-absen" class="text-[10px] font-bold bg-blue-100 text-blue-800 px-3 py-2 rounded-lg border shrink-0"><i class="fa-solid fa-pen-to-square mr-1"></i>Manual</button>
+      </div>
+      <div class="p-2 max-h-[42vh] overflow-y-auto">
+        <div class="relative mb-2"><i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i><input id="live-search" type="text" placeholder="Cari nama siswa..." class="w-full pl-8 pr-3 py-2 rounded-lg border text-[10px] bg-gray-50 outline-none"></div>
+        <ul id="live-scan-list" class="space-y-1.5"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="scan-toast" class="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-4 rounded-3xl shadow-2xl font-black flex flex-col items-center text-center transition-all duration-200 opacity-0 scale-90 pointer-events-none z-[100] min-w-[280px] border-4 bg-white">
+    <i id="scan-toast-icon" class="fa-solid fa-check-circle text-5xl mb-2"></i><span id="scan-toast-title" class="text-sm uppercase tracking-widest mb-1">Status</span><span id="scan-toast-desc" class="text-xl font-black text-gray-800">Nama</span>
+  </div>
+</section>
+
+<!-- REKAP -->
+<section id="guru-view-rekap" class="guru-view hidden p-4 md:p-6 space-y-5">
+  <div><h2 class="text-xl font-black">Rekap & Laporan</h2><p class="text-[10px] text-gray-500 font-bold uppercase mt-1">Export data absensi ke Excel.</p></div>
+  <div class="bg-white rounded-3xl p-5 shadow-sm border space-y-4">
+    <div><label class="block text-xs font-black text-gray-700 mb-1.5 uppercase">Pilih Kelas</label><select id="export-kelas" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold outline-none"><option value="">-- Pilih Kelas --</option></select></div>
+    <div><label class="block text-xs font-black text-gray-700 mb-1.5 uppercase">Pilih Tanggal Sesi</label><input type="date" id="export-tanggal" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold outline-none"><p class="text-[9px] text-gray-400 font-bold mt-1">Kosongkan tanggal untuk seluruh riwayat kelas.</p></div>
+    <button type="button" id="btn-export-excel" class="w-full bg-green-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-95"><i class="fa-solid fa-file-excel mr-2"></i>EXPORT EXCEL</button>
+  </div>
+</section>
+</main>
+
+<nav class="bg-white border-t flex justify-around items-center h-[70px] shrink-0 shadow-lg absolute bottom-0 w-full px-2 safe-bottom z-30">
+  <button type="button" class="nav-item active flex flex-col items-center justify-center w-full h-full text-gray-400" data-target="beranda"><i class="fa-solid fa-house text-xl mb-1"></i><span class="text-[9px] uppercase font-bold">Beranda</span></button>
+  <button type="button" class="nav-item flex flex-col items-center justify-center w-full h-full text-gray-400" data-target="siswa"><i class="fa-solid fa-users text-xl mb-1"></i><span class="text-[9px] uppercase font-bold">Data</span></button>
+  <div class="relative w-full h-full flex justify-center"><button type="button" id="nav-scan" class="absolute -top-6 w-[60px] h-[60px] rounded-full text-white flex flex-col items-center justify-center border-[5px] border-white bg-gradient-to-r from-blue-700 to-blue-500 shadow-lg"><i class="fa-solid fa-camera text-2xl"></i></button><span class="absolute bottom-1.5 text-[9px] font-black text-blue-800 uppercase">Scan</span></div>
+  <button type="button" class="nav-item flex flex-col items-center justify-center w-full h-full text-gray-400" data-target="rekap"><i class="fa-solid fa-file-excel text-xl mb-1"></i><span class="text-[9px] uppercase font-bold">Rekap</span></button>
+</nav>
+</div>
+
+<!-- MODAL GURU -->
+<div id="modal-add-guru" class="fixed inset-0 bg-black/60 z-[100] hidden items-end md:items-center justify-center p-4">
+<div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl">
+<div class="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-3xl"><h3 class="font-black text-sm uppercase">Tambah Akun Guru</h3><button type="button" data-close="modal-add-guru" class="w-8 h-8 bg-gray-200 rounded-full"><i class="fa-solid fa-xmark"></i></button></div>
+<form id="form-add-guru" class="p-6 space-y-4">
+<div><label class="block text-xs font-black mb-1">Nama Lengkap</label><input id="inp-guru-nama" required class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold"></div>
+<div><label class="block text-xs font-black mb-1">Username Login</label><input id="inp-guru-uname" required autocapitalize="none" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold"></div>
+<div><label class="block text-xs font-black mb-1">Password</label><input id="inp-guru-pass" required type="password" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold"></div>
+<button class="w-full bg-blue-800 text-white font-black py-3.5 rounded-xl">SIMPAN GURU</button>
+</form></div></div>
+
+<!-- MODAL SISWA -->
+<div id="modal-add-siswa" class="fixed inset-0 bg-black/60 z-[100] hidden items-end md:items-center justify-center p-4">
+<div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl">
+<div class="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-3xl"><h3 class="font-black text-sm uppercase">Tambah Siswa Manual</h3><button type="button" data-close="modal-add-siswa" class="w-8 h-8 bg-gray-200 rounded-full"><i class="fa-solid fa-xmark"></i></button></div>
+<form id="form-add-siswa" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+<div><label class="block text-xs font-black mb-1">Kelas</label><input id="inp-sw-kelas" list="datalist-kelas" required class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold uppercase"><datalist id="datalist-kelas"></datalist></div>
+<div><label class="block text-xs font-black mb-1">NIS / NISN</label><input id="inp-sw-nis" required class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold"></div>
+<div><label class="block text-xs font-black mb-1">Nama Lengkap</label><input id="inp-sw-nama" required class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold"></div>
+<div><label class="block text-xs font-black mb-1">Jenis Kelamin</label><select id="inp-sw-jk" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold"><option value="L">Laki-Laki (L)</option><option value="P">Perempuan (P)</option></select></div>
+<button class="w-full bg-blue-800 text-white font-black py-3.5 rounded-xl">SIMPAN & GENERATE QR <i class="fa-solid fa-qrcode ml-2"></i></button>
+</form></div></div>
+
+<div id="qr-render-area" class="hidden"></div>
+
+<script>
+'use strict';
+
+/* ================= DATABASE ================= */
+const db = new Dexie("AbsensiKelas_PWA_DB");
+db.version(1).stores({
+  users:'id,role,username,password,name,status',
+  classes:'++id,teacherId,name,[teacherId+name]',
+  students:'++id,classId,teacherId,nis,name,gender,qrToken,[teacherId+nis],[sessionId+studentId]',
+  sessions:'++id,classId,teacherId,date,timeStart,timeLimit,status',
+  attendance:'++id,sessionId,studentId,classId,teacherId,date,status,timestamp,method,[sessionId+studentId]'
+});
+
+let currentUser=null, activeSession=null;
+let html5QrCode=null;
+let isProcessingScan=false;
+let currentCameraFacingMode='environment';
+let liveFilterMode='ALL';
+let guruClasses=[],guruStudents=[],sessionStudents=[],sessionAttendanceMap={};
+let audioCtx=null;
+
+/* ================= HELPERS ================= */
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const localDateString=()=>{
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+const formatDate=ts=>new Date(ts).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+const formatTime=ts=>new Date(ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+const normalizeUsername=v=>String(v??'').trim().toLowerCase().replace(/\s+/g,'');
+const normalizeClass=v=>String(v??'').trim().replace(/\s+/g,' ').toUpperCase();
+const generateToken=()=>`AK-STU-${cryptoSafe()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+function cryptoSafe(){
+  try{
+    if(window.crypto?.getRandomValues){
+      const a=new Uint32Array(2); crypto.getRandomValues(a);
+      return a[0].toString(36).toUpperCase()+a[1].toString(36).toUpperCase();
+    }
+  }catch(e){}
+  return Date.now().toString(36).toUpperCase();
+}
+function showScreen(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active')}
+function openModal(id){$(id).classList.remove('hidden');$(id).classList.add('flex')}
+function closeModal(id){$(id).classList.add('hidden');$(id).classList.remove('flex')}
+function setLoading(title='Memproses...'){Swal.fire({title,allowOutsideClick:false,didOpen:()=>Swal.showLoading()})}
+function safeText(value){return String(value??'').trim()}
+
+/* ================= AUDIO ================= */
+function playBeep(type){
+  try{
+    if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    if(type==='success'){
+      o.type='sine';o.frequency.setValueAtTime(1000,audioCtx.currentTime);
+      g.gain.setValueAtTime(.1,audioCtx.currentTime);o.start();o.stop(audioCtx.currentTime+.1);
+    }else{
+      o.type='sawtooth';o.frequency.setValueAtTime(220,audioCtx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(100,audioCtx.currentTime+.25);
+      g.gain.setValueAtTime(.16,audioCtx.currentTime);o.start();o.stop(audioCtx.currentTime+.25);
+    }
+  }catch(e){}
+  try{if(navigator.vibrate)navigator.vibrate(type==='success'?[100]:[60,60,60])}catch(e){}
+}
+
+/* ================= INIT ================= */
+window.addEventListener('load',async()=>{
+  try{
+    const admin=await db.users.where('role').equals('ADMIN').count();
+    if(!admin) await db.users.put({id:'admin_master',username:'admin',password:'123456',name:'Administrator',role:'ADMIN',status:'ACTIVE'});
+  }catch(e){console.error(e);await Swal.fire('Database Error','Database lokal tidak dapat dibuka. Coba tutup aplikasi lalu buka kembali.','error')}
+  setTimeout(()=>showScreen('screen-login'),900);
+  bindEvents();
+});
+
+function bindEvents(){
+  $('form-login').addEventListener('submit',e=>{e.preventDefault();handleLogin()});
+  $('login-eye-btn').addEventListener('click',()=>togglePassword());
+  $('admin-logout').addEventListener('click',handleLogout);
+  $('guru-logout').addEventListener('click',handleLogout);
+
+  $('btn-add-guru').addEventListener('click',()=>openModal('modal-add-guru'));
+  $('form-add-guru').addEventListener('submit',e=>{e.preventDefault();adminSaveGuruManual()});
+  $('btn-template-guru').addEventListener('click',adminDownloadTemplateGuru);
+  $('btn-upload-guru').addEventListener('click',()=>$('file-import-guru').click());
+  $('file-import-guru').addEventListener('change',adminHandleImportGuru);
+  $('adm-search-guru').addEventListener('input',adminFilterGuru);
+
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
+
+  document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>guruSwitchView(b.dataset.target)));
+  $('nav-scan').addEventListener('click',()=>guruSwitchView('scan'));
+  document.querySelectorAll('.quick-btn').forEach(b=>b.addEventListener('click',()=>guruSwitchView(b.dataset.goto)));
+
+  $('btn-template-siswa').addEventListener('click',guruDownloadTemplateSiswa);
+  $('btn-upload-siswa').addEventListener('click',()=>$('file-import-siswa').click());
+  $('file-import-siswa').addEventListener('change',guruHandleImportSiswa);
+  $('filter-siswa-kelas').addEventListener('change',loadGuruSiswaList);
+  $('search-siswa').addEventListener('input',filterGuruSiswaList);
+  $('btn-add-siswa').addEventListener('click',()=>openModal('modal-add-siswa'));
+  $('btn-print-massal').addEventListener('click',printQRMassal);
+  $('form-add-siswa').addEventListener('submit',e=>{e.preventDefault();guruSaveSiswaManual()});
+
+  $('btn-start-scan').addEventListener('click',startScannerSession);
+  $('btn-close-session').addEventListener('click',confirmCloseSession);
+  $('btn-retry-camera').addEventListener('click',initCameraStream);
+  $('btn-switch-camera').addEventListener('click',switchCamera);
+  $('btn-manual-absen').addEventListener('click',openManualAbsen);
+  $('live-search').addEventListener('input',renderLiveList);
+  document.querySelectorAll('.live-flt').forEach(b=>b.addEventListener('click',()=>filterLiveList(b.dataset.mode,b)));
+
+  $('btn-export-excel').addEventListener('click',guruExportExcel);
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden && activeSession) forceStopCamera();
+  });
+}
+
+/* ================= LOGIN ================= */
+function togglePassword(){
+  const i=$('login-password'),ico=$('login-eye');
+  if(i.type==='password'){i.type='text';ico.className='fa-solid fa-eye-slash'}
+  else{i.type='password';ico.className='fa-solid fa-eye'}
+}
+async function handleLogin(){
+  const uname=normalizeUsername($('login-username').value),pass=$('login-password').value;
+  if(!uname||!pass)return Swal.fire('Oops','Isi username dan password.','warning');
+  setLoading('Memverifikasi...');
+  try{
+    const users=await db.users.where('username').equals(uname).toArray();
+    const user=users.find(x=>x.password===pass);
+    Swal.close();
+    if(!user)return Swal.fire('Gagal','Username atau password salah.','error');
+    if(user.status!=='ACTIVE')return Swal.fire('Ditolak','Akun dinonaktifkan Administrator.','error');
+    currentUser=user;
+    if(user.role==='ADMIN')initAdminDash();else initGuruDash();
+  }catch(e){Swal.close();console.error(e);Swal.fire('Error','Gagal memproses login.','error')}
+}
+async function handleLogout(){
+  const r=await Swal.fire({title:'Keluar dari Sistem?',icon:'warning',showCancelButton:true,confirmButtonText:'Ya, Logout',cancelButtonText:'Batal'});
+  if(!r.isConfirmed)return;
+  await forceStopCamera();
+  activeSession=null;currentUser=null;
+  $('form-login').reset();showScreen('screen-login');
+}
+
+/* ================= ADMIN ================= */
+async function initAdminDash(){
+  showScreen('screen-admin');
+  const gurus=await db.users.where('role').equals('GURU').toArray();
+  $('adm-stat-total').textContent=gurus.length;
+  $('adm-stat-aktif').textContent=gurus.filter(x=>x.status==='ACTIVE').length;
+  renderAdminGuruList(gurus);
+}
+function renderAdminGuruList(list){
+  const ul=$('adm-list-guru');
+  if(!list.length){ul.innerHTML='<div class="p-10 text-center text-xs text-gray-400 font-bold">Belum ada akun guru.</div>';return}
+  list.sort((a,b)=>a.name.localeCompare(b.name,'id'));
+  ul.innerHTML=list.map((g,i)=>`<li class="p-4 flex flex-col md:flex-row justify-between gap-3 ${g.status!=='ACTIVE'?'opacity-60 bg-gray-50':''}">
+    <div class="min-w-0"><h4 class="font-black text-sm truncate">${i+1}. ${esc(g.name)}</h4><p class="text-[10px] text-gray-500 font-mono mt-1">@${esc(g.username)} | Status: <b class="${g.status==='ACTIVE'?'text-green-600':'text-red-500'}">${g.status}</b></p></div>
+    <button type="button" data-id="${esc(g.id)}" data-status="${g.status}" class="toggle-guru text-[10px] font-black px-3 py-1.5 rounded-lg border ${g.status==='ACTIVE'?'bg-red-50 text-red-600':'bg-green-50 text-green-600'}">${g.status==='ACTIVE'?'Nonaktifkan':'Aktifkan'}</button>
+  </li>`).join('');
+  ul.querySelectorAll('.toggle-guru').forEach(b=>b.addEventListener('click',()=>adminToggleStatusGuru(b.dataset.id,b.dataset.status)));
+}
+async function adminFilterGuru(){
+  const term=$('adm-search-guru').value.toLowerCase();
+  const gurus=await db.users.where('role').equals('GURU').toArray();
+  renderAdminGuruList(gurus.filter(g=>g.name.toLowerCase().includes(term)||g.username.toLowerCase().includes(term)));
+}
+function adminDownloadTemplateGuru(){
+  const ws=XLSX.utils.aoa_to_sheet([['nama_guru','username','password','status'],['Fauzan Ahmad','fauzan','guru123','AKTIF']]);
+  ws['!cols']=[{wch:25},{wch:18},{wch:18},{wch:12}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Data Guru');XLSX.writeFile(wb,'Template_Import_Guru.xlsx');
+}
+async function adminHandleImportGuru(e){
+  const file=e.target.files?.[0];if(!file)return;
+  e.target.value='';setLoading('Memproses Excel Guru...');
+  try{
+    const data=await readExcel(file),headers=data[0].map(normalizeHeader);
+    const idx={nama:findHeader(headers,['nama_guru','nama']),uname:findHeader(headers,['username','user']),pass:findHeader(headers,['password','pass']),stat:findHeader(headers,['status'])};
+    if(idx.nama<0||idx.uname<0||idx.pass<0)throw new Error('Kolom wajib: nama_guru, username, password.');
+    let success=0,dup=0,invalid=0;
+    await db.transaction('rw',db.users,async()=>{
+      for(let i=1;i<data.length;i++){
+        const r=data[i]||[],name=safeText(r[idx.nama]),uname=normalizeUsername(r[idx.uname]),pass=safeText(r[idx.pass]);
+        if(!name||!uname||!pass){invalid++;continue}
+        if(await db.users.where('username').equals(uname).count()){dup++;continue}
+        const status=safeText(idx.stat>=0?r[idx.stat]:'AKTIF').toUpperCase().includes('NON')?'INACTIVE':'ACTIVE';
+        await db.users.add({id:'G_'+Date.now().toString(36)+'_'+i,role:'GURU',username:uname,password:pass,name,status});success++;
+      }
+    });
+    Swal.close();await initAdminDash();
+    Swal.fire('Import Selesai',`Berhasil: <b>${success}</b><br>Duplikat: <b>${dup}</b><br>Baris tidak lengkap: <b>${invalid}</b>`,'success');
+  }catch(err){Swal.close();Swal.fire('Gagal Import',err.message,'error')}
+}
+async function adminSaveGuruManual(){
+  const name=safeText($('inp-guru-nama').value),uname=normalizeUsername($('inp-guru-uname').value),pass=$('inp-guru-pass').value;
+  if(!name||!uname||!pass)return;
+  if(await db.users.where('username').equals(uname).count())return Swal.fire('Gagal','Username sudah terpakai.','error');
+  await db.users.add({id:'G_'+Date.now(),role:'GURU',username:uname,password:pass,name,status:'ACTIVE'});
+  closeModal('modal-add-guru');$('form-add-guru').reset();await initAdminDash();Swal.fire('Sukses','Akun Guru berhasil dibuat.','success');
+}
+async function adminToggleStatusGuru(id,status){await db.users.update(id,{status:status==='ACTIVE'?'INACTIVE':'ACTIVE'});initAdminDash()}
+
+/* ================= GURU NAV ================= */
+async function initGuruDash(){
+  showScreen('screen-guru');$('guru-header-name').textContent=currentUser.name;$('guru-date-today').textContent=formatDate(Date.now());
+  guruClasses=await db.classes.where('teacherId').equals(currentUser.id).toArray();
+  $('guru-stat-kelas').textContent=guruClasses.length;
+  $('guru-stat-siswa').textContent=await db.students.where('teacherId').equals(currentUser.id).count();
+}
+async function guruSwitchView(view){
+  if(view!=='scan')await forceStopCamera();
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.target===view));
+  document.querySelectorAll('.guru-view').forEach(x=>x.classList.add('hidden'));
+  $(`guru-view-${view}`).classList.remove('hidden');
+  if(view==='beranda')await initGuruDash();
+  if(view==='siswa')await loadGuruSiswaView();
+  if(view==='scan')await loadGuruScanSetupView();
+  if(view==='rekap')await loadGuruRekapView();
+}
+
+/* ================= SISWA ================= */
+async function loadGuruSiswaView(){
+  guruClasses=await db.classes.where('teacherId').equals(currentUser.id).toArray();
+  guruClasses.sort((a,b)=>a.name.localeCompare(b.name,'id'));
+  $('filter-siswa-kelas').innerHTML='<option value="">Semua Kelas</option>'+guruClasses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  $('datalist-kelas').innerHTML=guruClasses.map(c=>`<option value="${esc(c.name)}"></option>`).join('');
+  await loadGuruSiswaList();
+}
+async function loadGuruSiswaList(){
+  const cid=Number($('filter-siswa-kelas').value);
+  guruStudents=cid?await db.students.where('[teacherId+nis]').between([currentUser.id,''],[currentUser.id,'\uffff']).toArray():await db.students.where('teacherId').equals(currentUser.id).toArray();
+  if(cid)guruStudents=guruStudents.filter(s=>s.classId===cid);
+  renderGuruSiswaList(guruStudents);
+}
+function renderGuruSiswaList(list){
+  const ul=$('guru-list-siswa');
+  if(!list.length){ul.innerHTML='<div class="text-center text-gray-400 text-xs font-bold py-16">Belum ada siswa.</div>';return}
+  const sorted=[...list].sort((a,b)=>a.name.localeCompare(b.name,'id'));
+  ul.innerHTML=sorted.map((s,i)=>{
+    const c=guruClasses.find(x=>x.id===s.classId);
+    return `<li class="p-4 flex flex-col sm:flex-row justify-between gap-3 hover:bg-blue-50">
+      <div class="min-w-0"><div class="flex items-center gap-2 mb-1"><span class="text-[10px] font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded">${esc(c?.name||'?')}</span><span class="text-[10px] text-gray-500 font-bold font-mono">NIS: ${esc(s.nis)}</span></div><h4 class="font-black text-sm text-gray-800 truncate">${i+1}. ${esc(s.name)}</h4></div>
+      <div class="flex gap-2 justify-end shrink-0"><button type="button" class="single-qr text-[10px] bg-blue-50 text-blue-600 font-bold px-3 py-2 rounded-lg border" data-token="${esc(s.qrToken)}" data-name="${esc(s.name)}" data-nis="${esc(s.nis)}" data-class="${esc(c?.name||'?')}"><i class="fa-solid fa-qrcode mr-1"></i>QR</button><button type="button" class="del-siswa text-[10px] bg-red-50 text-red-500 font-bold px-3 py-2 rounded-lg border" data-id="${s.id}"><i class="fa-solid fa-trash-can"></i></button></div>
+    </li>`;
+  }).join('');
+  ul.querySelectorAll('.single-qr').forEach(b=>b.addEventListener('click',()=>guruPrintSingleQR(b.dataset.token,b.dataset.name,b.dataset.nis,b.dataset.class)));
+  ul.querySelectorAll('.del-siswa').forEach(b=>b.addEventListener('click',()=>guruDelSiswa(Number(b.dataset.id))));
+}
+function filterGuruSiswaList(){
+  const t=$('search-siswa').value.toLowerCase();
+  renderGuruSiswaList(guruStudents.filter(s=>s.name.toLowerCase().includes(t)||String(s.nis).toLowerCase().includes(t)));
+}
+function guruDownloadTemplateSiswa(){
+  const ws=XLSX.utils.aoa_to_sheet([['nis','nama_siswa','kelas','jenis_kelamin'],['1001','Ahmad Rizky','VII A','L'],['1002','Budi Santoso','VII A','L'],['1003','Citra Ayu','VII B','P']]);
+  ws['!cols']=[{wch:16},{wch:28},{wch:14},{wch:16}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Data Siswa');XLSX.writeFile(wb,'Template_Siswa.xlsx');
+}
+async function guruHandleImportSiswa(e){
+  const file=e.target.files?.[0];if(!file)return;e.target.value='';setLoading('Mengimpor Siswa...');
+  try{
+    const data=await readExcel(file),headers=data[0].map(normalizeHeader);
+    const idx={nis:findHeader(headers,['nis','nisn']),nama:findHeader(headers,['nama_siswa','nama']),kelas:findHeader(headers,['kelas']),jk:findHeader(headers,['jenis_kelamin','jenis'])};
+    if(idx.nis<0||idx.nama<0||idx.kelas<0)throw new Error('Kolom wajib: nis, nama_siswa, kelas.');
+    let success=0,dup=0,invalid=0,classesMade=0;const classNames=new Set();
+    for(let i=1;i<data.length;i++){const r=data[i]||[],k=normalizeClass(r[idx.kelas]);if(k)classNames.add(k)}
+    await db.transaction('rw',db.classes,db.students,async()=>{
+      const classMap={};
+      for(const name of classNames){
+        let c=await db.classes.where('[teacherId+name]').equals([currentUser.id,name]).first();
+        if(!c){const id=await db.classes.add({teacherId:currentUser.id,name});c=await db.classes.get(id);classesMade++}
+        classMap[name]=c.id;
+      }
+      for(let i=1;i<data.length;i++){
+        const r=data[i]||[],nis=safeText(r[idx.nis]),name=safeText(r[idx.nama]).toUpperCase(),k=normalizeClass(r[idx.kelas]);
+        if(!nis||!name||!k||!classMap[k]){invalid++;continue}
+        const exist=await db.students.where('[teacherId+nis]').equals([currentUser.id,nis]).first();
+        if(exist){dup++;continue}
+        const jk=idx.jk>=0&&safeText(r[idx.jk]).toUpperCase().startsWith('P')?'P':'L';
+        await db.students.add({teacherId:currentUser.id,classId:classMap[k],nis,name,gender:jk,qrToken:generateToken()});success++;
+      }
+    });
+    Swal.close();await loadGuruSiswaView();await initGuruDash();
+    Swal.fire('Import Selesai',`Berhasil: <b>${success}</b> siswa<br>Kelas baru: <b>${classesMade}</b><br>Duplikat: <b>${dup}</b><br>Baris tidak lengkap: <b>${invalid}</b>`,'success');
+  }catch(err){Swal.close();Swal.fire('Gagal Import',err.message,'error')}
+}
+async function guruSaveSiswaManual(){
+  const clsName=normalizeClass($('inp-sw-kelas').value),nis=safeText($('inp-sw-nis').value),name=safeText($('inp-sw-nama').value).toUpperCase(),jk=$('inp-sw-jk').value;
+  if(!clsName||!nis||!name)return;
+  if(await db.students.where('[teacherId+nis]').equals([currentUser.id,nis]).first())return Swal.fire('Gagal',`NIS ${esc(nis)} sudah terdaftar.`,'error');
+  let c=await db.classes.where('[teacherId+name]').equals([currentUser.id,clsName]).first();
+  if(!c){const id=await db.classes.add({teacherId:currentUser.id,name:clsName});c=await db.classes.get(id)}
+  await db.students.add({teacherId:currentUser.id,classId:c.id,nis,name,gender:jk,qrToken:generateToken()});
+  closeModal('modal-add-siswa');$('form-add-siswa').reset();await loadGuruSiswaView();await initGuruDash();Swal.fire('Sukses','Siswa disimpan dan QR Code dibuat.','success');
+}
+async function guruDelSiswa(id){
+  const r=await Swal.fire({title:'Hapus Siswa?',text:'Data siswa akan dihapus.',icon:'warning',showCancelButton:true,confirmButtonText:'Hapus',cancelButtonText:'Batal'});
+  if(!r.isConfirmed)return;
+  await db.students.delete(id);await loadGuruSiswaList();await initGuruDash();
+}
+
+/* ================= QR PRINT ================= */
+function makeQrDataUrl(text,size=256){
+  return new Promise(resolve=>{
+    const host=document.createElement('div');host.style.position='fixed';host.style.left='-99999px';document.body.appendChild(host);
+    new QRCode(host,{text,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+    setTimeout(()=>{const img=host.querySelector('img'),canvas=host.querySelector('canvas');const uri=img?.src||canvas?.toDataURL('image/png')||'';host.remove();resolve(uri)},80);
+  });
+}
+async function printQRMassal(){
+  const cid=Number($('filter-siswa-kelas').value);if(!cid)return Swal.fire('Pilih Kelas','Pilih kelas terlebih dahulu.','info');
+  const cls=await db.classes.get(cid),students=await db.students.where('classId').equals(cid).toArray();
+  if(!students.length)return Swal.fire('Kosong','Belum ada siswa di kelas tersebut.','info');
+  setLoading('Membuat QR Kelas...');
+  const cards=[];
+  for(const s of students){const uri=await makeQrDataUrl(s.qrToken,160);cards.push(`<div class="card"><div class="title">ABSENSI KELAS</div><img src="${uri}"><b>${esc(s.name)}</b><small>NIS: ${esc(s.nis)}<br>Kelas: ${esc(cls.name)}</small></div>`)}
+  Swal.close();openPrintWindow(`<h1>QR ABSENSI — ${esc(cls.name)}</h1><div class="grid">${cards.join('')}</div>`);
+}
+async function guruPrintSingleQR(token,name,nis,cls){
+  setLoading('Membuat QR...');
+  const uri=await makeQrDataUrl(token,300);Swal.close();
+  openPrintWindow(`<div class="single"><h2>ABSENSI KELAS</h2><img src="${uri}"><h2>${esc(name)}</h2><p>NIS: ${esc(nis)}<br>Kelas: ${esc(cls)}</p></div>`);
+}
+function openPrintWindow(content){
+  const w=window.open('','_blank');
+  if(!w){Swal.fire('Tidak dapat membuka cetak','Browser/WebView memblokir jendela cetak. Gunakan browser dengan izin pop-up.','warning');return}
+  w.document.write(`<!doctype html><html><head><title>Cetak QR Absensi</title><style>body{font-family:Arial,sans-serif;padding:15mm;text-align:center}button{padding:10px 25px;margin-bottom:15px;background:#1e40af;color:white;border:0;border-radius:8px;font-weight:bold}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10mm}.card{border:1px solid #222;padding:7mm;page-break-inside:avoid;border-radius:8px}.card img{width:45mm;height:45mm;display:block;margin:4mm auto}.card b{display:block;font-size:12pt}.card small{display:block;font-size:9pt;margin-top:2mm}.title{font-weight:bold;font-size:10pt}.single{display:inline-block;border:2px solid #111;padding:12mm;border-radius:10px}.single img{width:70mm;height:70mm;display:block;margin:5mm auto}@media print{button{display:none}@page{margin:5mm}.grid{grid-template-columns:repeat(3,1fr)}}</style></head><body><button onclick="window.print()">PRINT</button>${content}</body></html>`);
+  w.document.close();
+}
+
+/* ================= SCANNER ================= */
+async function loadGuruScanSetupView(){
+  guruClasses=await db.classes.where('teacherId').equals(currentUser.id).toArray();guruClasses.sort((a,b)=>a.name.localeCompare(b.name,'id'));
+  $('scan-sel-kelas').innerHTML='<option value="">-- Pilih Kelas --</option>'+guruClasses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  const d=new Date();d.setMinutes(d.getMinutes()+15);$('scan-time-late').value=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  $('scan-setup-panel').classList.remove('hidden');$('scan-active-panel').classList.add('hidden');$('scan-active-panel').classList.remove('flex');
+}
+async function startScannerSession(){
+  const cid=Number($('scan-sel-kelas').value),late=$('scan-time-late').value;
+  if(!cid||!late)return Swal.fire('Info','Pilih kelas dan batas jam hadir.','warning');
+  const cls=await db.classes.get(cid);sessionStudents=await db.students.where('classId').equals(cid).toArray();
+  sessionStudents=sessionStudents.filter(s=>s.teacherId===currentUser.id);
+  if(!sessionStudents.length)return Swal.fire('Kosong','Belum ada siswa di kelas ini.','error');
+  const [hh,mm]=late.split(':').map(Number),d=new Date();d.setHours(hh,mm,0,0);
+  const now=Date.now();
+  const sid=await db.sessions.add({classId:cid,teacherId:currentUser.id,date:now,timeStart:now,timeLimit:d.getTime(),status:'OPEN'});
+  activeSession=await db.sessions.get(sid);
+  $('scan-setup-panel').classList.add('hidden');$('scan-active-panel').classList.remove('hidden');$('scan-active-panel').classList.add('flex');
+  $('live-class-name').textContent=`ABSENSI ${cls.name}`;$('live-time-info').textContent=`Batas Hadir: ${late}`;$('live-search').value='';
+  liveFilterMode='ALL';document.querySelectorAll('.live-flt').forEach(b=>{b.classList.toggle('bg-gray-800',b.dataset.mode==='ALL');b.classList.toggle('text-white',b.dataset.mode==='ALL');b.classList.toggle('bg-gray-100',b.dataset.mode!=='ALL');b.classList.toggle('text-gray-600',b.dataset.mode!=='ALL')});
+  await loadLiveAttendanceMap();await initCameraStream();
+}
+async function initCameraStream(){
+  if(!activeSession)return;
+  const warning=$('scanner-permission-warning');warning.classList.add('hidden');
+  try{
+    await stopScannerOnly();
+    if(!window.Html5Qrcode)throw new Error('Library scanner belum termuat.');
+    html5QrCode=new Html5Qrcode('reader');
+    await html5QrCode.start({facingMode:currentCameraFacingMode},{fps:10,qrbox:{width:230,height:230},aspectRatio:1.0},onScanSuccess,()=>{});
+    $('cam-facing-label').textContent=currentCameraFacingMode==='environment'?'Kamera Belakang':'Kamera Depan';
+  }catch(err){
+    console.error(err);warning.classList.remove('hidden');
+    $('camera-error-text').textContent=cameraErrorMessage(err);
+  }
+}
+function cameraErrorMessage(err){
+  const s=String(err?.message||err||'');
+  if(/permission|notallowed|denied/i.test(s))return'Kamera ditolak. Izinkan akses kamera pada pengaturan browser/perangkat.';
+  if(/secure|https/i.test(s))return'Kamera membutuhkan HTTPS atau WebView yang mengizinkan kamera.';
+  if(/notfound|device/i.test(s))return'Kamera tidak ditemukan pada perangkat.';
+  return'Kamera gagal dibuka. Pastikan kamera tidak sedang dipakai aplikasi lain.';
+}
+async function switchCamera(){
+  currentCameraFacingMode=currentCameraFacingMode==='environment'?'user':'environment';
+  await initCameraStream();
+}
+async function stopScannerOnly(){
+  if(html5QrCode){
+    try{if(html5QrCode.isScanning)await html5QrCode.stop()}catch(e){}
+    try{html5QrCode.clear()}catch(e){}
+    html5QrCode=null;
+  }
+}
+async function forceStopCamera(){await stopScannerOnly()}
+async function onScanSuccess(decodedText){
+  if(isProcessingScan||!activeSession)return;
+  isProcessingScan=true;
+  try{
+    const token=safeText(decodedText),student=await db.students.where('qrToken').equals(token).first();
+    if(!student){showScannerToast('TIDAK DIKENAL','QR bukan milik sistem ini','error');playBeep('error');return}
+    if(student.teacherId!==currentUser.id||student.classId!==activeSession.classId){
+      const c=await db.classes.get(student.classId);showScannerToast('SALAH KELAS',`Siswa dari: ${c?.name||'kelas lain'}`,'error');playBeep('error');return;
+    }
+    const exist=await db.attendance.where('[sessionId+studentId]').equals([activeSession.id,student.id]).first();
+    if(exist){showScannerToast('SUDAH ABSEN',student.name,'warning');playBeep('error');return}
+    const now=Date.now(),status=now>activeSession.timeLimit?'TERLAMBAT':'HADIR';
+    await db.attendance.add({sessionId:activeSession.id,studentId:student.id,classId:student.classId,teacherId:currentUser.id,date:localDateString(),status,timestamp:now,method:'QR'});
+    showScannerToast(status,student.name,'success');playBeep('success');await loadLiveAttendanceMap();
+  }catch(e){console.error(e);showScannerToast('ERROR','Gagal menyimpan absensi','error')}
+  finally{setTimeout(()=>{isProcessingScan=false},1200)}
+}
+function showScannerToast(title,desc,type){
+  const t=$('scan-toast'),i=$('scan-toast-icon'),tt=$('scan-toast-title'),d=$('scan-toast-desc');
+  t.className='absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-4 rounded-3xl shadow-2xl font-black flex flex-col items-center text-center transition-all duration-200 z-[100] min-w-[280px] border-4 scale-100 opacity-100 bg-white';
+  tt.textContent=title;d.textContent=desc;
+  const map={success:['border-green-500','text-green-500','fa-check-circle','text-green-600'],warning:['border-yellow-500','text-yellow-500','fa-triangle-exclamation','text-yellow-600'],error:['border-red-500','text-red-500','fa-xmark','text-red-600']}[type]||[];
+  t.classList.add(map[0]);i.className=`fa-solid ${map[2]} text-5xl mb-2 ${map[1]}`;tt.className=`text-sm uppercase tracking-widest mb-1 ${map[3]}`;
+  clearTimeout(showScannerToast.timer);showScannerToast.timer=setTimeout(()=>{t.classList.replace('scale-100','scale-90');t.classList.replace('opacity-100','opacity-0')},1500);
+}
+async function loadLiveAttendanceMap(){
+  if(!activeSession)return;
+  const list=await db.attendance.where('sessionId').equals(activeSession.id).toArray();sessionAttendanceMap={};list.forEach(a=>sessionAttendanceMap[a.studentId]=a);renderLiveList();
+}
+function filterLiveList(mode,button){
+  liveFilterMode=mode;document.querySelectorAll('.live-flt').forEach(b=>{const on=b===button;b.classList.toggle('bg-gray-800',on);b.classList.toggle('text-white',on);b.classList.toggle('bg-gray-100',!on);b.classList.toggle('text-gray-600',!on)});renderLiveList();
+}
+function renderLiveList(){
+  if(!activeSession)return;
+  let hadir=0,telat=0;sessionStudents.forEach(s=>{const a=sessionAttendanceMap[s.id];if(a?.status==='HADIR')hadir++;if(a?.status==='TERLAMBAT')telat++});
+  $('ls-total').textContent=sessionStudents.length;$('ls-hadir').textContent=hadir;$('ls-telat').textContent=telat;$('ls-belum').textContent=sessionStudents.length-Object.keys(sessionAttendanceMap).length;
+  const term=$('live-search').value.toLowerCase();
+  let arr=sessionStudents.map(s=>({s,a:sessionAttendanceMap[s.id]}));
+  if(liveFilterMode==='HADIR')arr=arr.filter(x=>x.a);
+  if(liveFilterMode==='BELUM')arr=arr.filter(x=>!x.a);
+  if(term)arr=arr.filter(x=>x.s.name.toLowerCase().includes(term)||String(x.s.nis).toLowerCase().includes(term));
+  arr.sort((a,b)=>(b.a?.timestamp||0)-(a.a?.timestamp||0));
+  $('live-scan-list').innerHTML=arr.length?arr.map(x=>{
+    const s=x.s,a=x.a;
+    if(!a)return`<li class="p-2.5 rounded-xl border bg-gray-50"><div class="flex justify-between"><span class="font-bold text-gray-600 text-xs">${esc(s.name)}</span><span class="text-[9px] font-black bg-gray-200 text-gray-500 px-2 py-0.5 rounded">BELUM ABSEN</span></div><div class="text-[9px] text-gray-400 font-bold mt-1">NIS: ${esc(s.nis)}</div></li>`;
+    const cls=a.status==='HADIR'?'text-green-600 bg-green-50 border-green-100':a.status==='TERLAMBAT'?'text-orange-600 bg-orange-50 border-orange-100':a.status==='IZIN'||a.status==='SAKIT'?'text-blue-600 bg-blue-50 border-blue-100':'text-red-600 bg-red-50 border-red-100';
+    return`<li class="p-2.5 rounded-xl border ${cls}"><div class="flex justify-between items-start"><span class="font-black text-gray-800 text-xs">${esc(s.name)}</span><span class="font-black text-[10px]">${a.status}</span></div><div class="flex justify-between text-[9px] text-gray-500 font-bold mt-1"><span>NIS: ${esc(s.nis)}</span><span>${formatTime(a.timestamp)} | ${a.method}</span></div></li>`;
+  }).join(''):'<div class="text-center text-gray-400 text-[10px] font-bold py-6">Tidak ada data.</div>';
+}
+async function openManualAbsen(){
+  if(!activeSession)return;
+  const absent=sessionStudents.filter(s=>!sessionAttendanceMap[s.id]);
+  if(!absent.length)return Swal.fire('Selesai','Semua siswa sudah memiliki status absensi.','info');
+  const html=`<select id="man-stu" class="w-full p-3 border rounded-xl mb-3 text-sm font-bold bg-gray-50">${absent.map(s=>`<option value="${s.id}">${esc(s.name)} (NIS: ${esc(s.nis)})</option>`).join('')}</select><select id="man-stat" class="w-full p-3 border rounded-xl text-sm font-bold bg-gray-50"><option value="HADIR">HADIR</option><option value="TERLAMBAT">TERLAMBAT</option><option value="IZIN">IZIN</option><option value="SAKIT">SAKIT</option><option value="ALPA">ALPA</option></select>`;
+  const r=await Swal.fire({title:'Absen Manual',html,showCancelButton:true,confirmButtonText:'Simpan',cancelButtonText:'Batal',confirmButtonColor:'#1e40af',preConfirm:()=>({id:Number($('man-stu').value),status:$('man-stat').value})});
+  if(!r.isConfirmed)return;
+  const s=absent.find(x=>x.id===r.value.id);if(!s)return;
+  try{await db.attendance.add({sessionId:activeSession.id,studentId:s.id,classId:s.classId,teacherId:currentUser.id,date:localDateString(),status:r.value.status,timestamp:Date.now(),method:'MANUAL'});await loadLiveAttendanceMap()}catch(e){Swal.fire('Gagal','Absensi tidak dapat disimpan.','error')}
+}
+async function confirmCloseSession(){
+  const r=await Swal.fire({title:'Tutup Kamera & Sesi?',text:'Kamera akan dimatikan dan sesi ditutup.',icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',confirmButtonText:'Ya, Tutup',cancelButtonText:'Batal'});
+  if(!r.isConfirmed)return;
+  await forceStopCamera();
+  if(activeSession){await db.sessions.update(activeSession.id,{status:'CLOSED'});activeSession=null}
+  $('scan-active-panel').classList.add('hidden');$('scan-active-panel').classList.remove('flex');$('scan-setup-panel').classList.remove('hidden');
+}
+
+/* ================= REKAP ================= */
+async function loadGuruRekapView(){
+  guruClasses=await db.classes.where('teacherId').equals(currentUser.id).toArray();guruClasses.sort((a,b)=>a.name.localeCompare(b.name,'id'));
+  $('export-kelas').innerHTML='<option value="">Pilih Kelas (Wajib)</option>'+guruClasses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+}
+async function guruExportExcel(){
+  const cid=Number($('export-kelas').value),tgl=$('export-tanggal').value;if(!cid)return Swal.fire('Pilih Kelas','Mohon pilih kelas.','warning');
+  setLoading('Membuat Excel...');
+  try{
+    const cls=await db.classes.get(cid),students=await db.students.where('classId').equals(cid).toArray();
+    let att=await db.attendance.where('classId').equals(cid).toArray();att=att.filter(a=>a.teacherId===currentUser.id);if(tgl)att=att.filter(a=>a.date===tgl);
+    if(!att.length){Swal.close();return Swal.fire('Kosong','Tidak ada riwayat absensi pada kriteria tersebut.','info')}
+    att.sort((a,b)=>a.timestamp-b.timestamp);
+    const rows=[['LAPORAN ABSENSI KELAS'],['Guru',currentUser.name],['Kelas',cls.name],['Filter Tanggal',tgl||'Seluruh Riwayat'],[],['TANGGAL','JAM','NIS','NAMA SISWA','STATUS','METODE']];
+    att.forEach(a=>{const s=students.find(x=>x.id===a.studentId);if(s)rows.push([a.date,formatTime(a.timestamp),String(s.nis),s.name,a.status,a.method])});
+    const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:13},{wch:9},{wch:15},{wch:30},{wch:15},{wch:12}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Rekap');
+    XLSX.writeFile(wb,`Laporan_Absen_${cls.name.replace(/[\\/:*?"<>|]/g,'_')}_${tgl||'All'}.xlsx`);Swal.close();
+  }catch(e){Swal.close();console.error(e);Swal.fire('Error','Gagal membuat file Excel.','error')}
+}
+
+/* ================= UTIL EXCEL ================= */
+function normalizeHeader(v){return safeText(v).toLowerCase().replace(/\s+/g,'_')}
+function findHeader(headers,names){
+  for(const n of names){const i=headers.indexOf(n);if(i>=0)return i}
+  return headers.findIndex(h=>names.some(n=>h.includes(n)));
+}
+function readExcel(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});if(!rows.length)throw new Error('File Excel kosong.');resolve(rows)}catch(err){reject(err)}};
+    r.onerror=()=>reject(new Error('File Excel tidak dapat dibaca.'));r.readAsArrayBuffer(file);
+  });
+}
+</script>
+</body>
+</html>
